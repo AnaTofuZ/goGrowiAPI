@@ -19,6 +19,12 @@ type Config struct {
 type Client struct {
 	httpClient *http.Client
 	config     *Config
+
+	Pages *PagesService
+}
+
+type service struct {
+	client *Client
 }
 
 func NewClient(cfg Config) (*Client, error) {
@@ -36,6 +42,7 @@ func NewClient(cfg Config) (*Client, error) {
 		httpClient: httpClient,
 		config:     &cfg,
 	}
+	client.Pages = &PagesService{client: &client}
 	return &client, nil
 }
 
@@ -67,11 +74,15 @@ func (c *Client) newRequest(ctx context.Context, method string, uri string, para
 
 	u.Path = path.Join(u.Path, uri)
 
-	rep, err := http.NewRequest(method, u.String(), body)
-	req := rep.WithContext(ctx)
+	req, err := http.NewRequest(method, u.String(), body)
+	req = req.WithContext(ctx)
 
-	defer req.Body.Close()
-	content, err := ioutil.ReadAll(req.Body)
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	content, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}

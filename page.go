@@ -1,6 +1,17 @@
 package goGrowiAPI
 
-import "time"
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/url"
+	"time"
+)
+
+const GET_ENDPOINT string = "/_api/pages.get"
+
+type PagesService service
 
 type User struct {
 	IsGravatarEnabled bool      `json:"isGravatarEnabled"`
@@ -51,4 +62,25 @@ type PagesGet struct {
 	Page  `json:"page"`
 	Ok    bool   `json:"ok"`
 	Error string `json:"error"`
+}
+
+func (p *PagesService) Get(ctx context.Context, path string) (*Page, error) {
+	params := url.Values{}
+	params.Set("access_token", p.client.config.Token)
+	params.Set("path", path)
+
+	res, err := p.client.newRequest(ctx, http.MethodGet, GET_ENDPOINT, &params)
+	if err != nil {
+		return nil, err
+	}
+	pagesGet := PagesGet{}
+	if err := json.Unmarshal(res, &pagesGet); err != nil {
+		return nil, err
+	}
+
+	if !pagesGet.Ok {
+		return nil, fmt.Errorf("failed %+v", pagesGet)
+	}
+
+	return &pagesGet.Page, nil
 }
